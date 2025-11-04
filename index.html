@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>a campus is made of memories, not buildings.</title>
+    <meta name="description" content="site-specific memory archive — nyuad" />
+    <!-- perf: help the browser set up TLS/HTTP2 early for firebase modules -->
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://www.googleapis.com" crossorigin />
+    <style>
+      :root {
+        --red: #d62828; /* stop‑sign red */
+        --ink: #222; /* subtle contrast for small UI text */
+        --paper: #ffffff; /* soft white */
+        --maxw: 880px;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      html {
+        box-sizing: border-box;
+      }
+      *,
+      *::before,
+      *::after {
+        box-sizing: inherit;
+      }
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--red);
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+          Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+      }
+      .wrap {
+        max-width: var(--maxw);
+        margin: 0 auto;
+        padding: 5rem 1.25rem 6rem;
+      }
+      header {
+        margin: 0 0 3rem 0;
+      }
+      .title {
+        font-size: clamp(28px, 3.2vw, 40px);
+        font-weight: 600;
+        letter-spacing: 0.01em;
+        text-transform: lowercase;
+      }
+      .subtitle {
+        color: var(--ink);
+        opacity: 0.65;
+        font-size: clamp(12px, 1.4vw, 14px);
+        text-transform: lowercase;
+        margin-top: 0.35rem;
+      }
+
+      /* home list */
+      ul.place-list {
+        list-style: none;
+        padding: 0;
+        margin: 2.25rem 0 0 0;
+        display: grid;
+        gap: 0.75rem;
+      }
+      ul.place-list a {
+        display: block;
+        padding: 1rem 1.1rem;
+        border: 1.5px solid var(--red);
+        border-radius: 14px;
+        text-decoration: none;
+        color: var(--red);
+        text-transform: lowercase;
+      }
+      ul.place-list a:hover {
+        background: #fff5f5;
+      }
+
+      /* location page */
+      .loc-title {
+        font-size: clamp(22px, 2.6vw, 30px);
+        font-weight: 600;
+        text-transform: lowercase;
+        margin-bottom: 0.35rem;
+      }
+      .loc-lines {
+        margin: 0.35rem 0 1rem;
+      }
+      .loc-line {
+        font-size: clamp(18px, 2.2vw, 24px);
+        font-weight: 500;
+        margin: 0.2rem 0;
+        text-transform: lowercase;
+      }
+      .divider {
+        height: 1px;
+        background: var(--red);
+        opacity: 0.22;
+        margin: 1.2rem 0 1.6rem;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.8rem;
+      }
+      .btn {
+        appearance: none;
+        border-radius: 14px;
+        border: 1.5px solid var(--red);
+        background: transparent;
+        color: var(--red);
+        padding: 0.85rem 1.05rem;
+        font-size: 16px;
+        text-transform: lowercase;
+        cursor: pointer;
+        text-decoration: none;
+      }
+      .btn.primary {
+        background: var(--red);
+        color: #fff;
+        border-color: var(--red);
+      }
+      .btn:hover {
+        filter: saturate(110%);
+      }
+
+      .footnote {
+        color: var(--ink);
+        opacity: 0.6;
+        font-size: 13px;
+        margin-top: 2.2rem;
+        text-transform: lowercase;
+      }
+      nav.breadcrumb {
+        margin-bottom: 1.4rem;
+      }
+      nav.breadcrumb a {
+        color: var(--red);
+        text-decoration: none;
+      }
+      nav.breadcrumb a:hover {
+        text-decoration: underline;
+      }
+
+      /* small stop icon for visual language */
+      .stopmark {
+        width: 20px;
+        height: 20px;
+        display: inline-block;
+        vertical-align: -3px;
+        margin-right: 0.45rem;
+      }
+      .stopmark svg {
+        display: block;
+      }
+
+      /* form styles */
+      form .field {
+        margin: 0.85rem 0;
+      }
+      label {
+        display: block;
+        font-size: 14px;
+        color: var(--ink);
+        opacity: 0.8;
+        margin-bottom: 0.35rem;
+        text-transform: lowercase;
+      }
+      textarea,
+      input[type="text"] {
+        width: 100%;
+        padding: 0.8rem 1rem;
+        border: 1.5px solid var(--red);
+        border-radius: 14px;
+        resize: vertical;
+        min-height: 120px;
+        color: var(--red);
+        background: #fff;
+      }
+      input[type="text"] {
+        min-height: initial;
+      }
+      .hint {
+        font-size: 12px;
+        color: var(--ink);
+        opacity: 0.6;
+        margin-top: 0.25rem;
+        text-transform: lowercase;
+      }
+
+      .entry {
+        padding: 1rem 0;
+        border-bottom: 1px solid rgba(214, 40, 40, 0.2);
+      }
+      .entry p {
+        margin: 0.2rem 0;
+      }
+      .entry .by {
+        color: var(--ink);
+        opacity: 0.7;
+        font-size: 13px;
+        margin-top: 0.2rem;
+      }
+      .entry.flash {
+        animation: fadeIn 0.6s ease-out;
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(-2px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .entry p {
+        margin: 0.2rem 0;
+      }
+      .entry .by {
+        color: var(--ink);
+        opacity: 0.7;
+        font-size: 13px;
+        margin-top: 0.2rem;
+      }
+
+      /* responsive spacing */
+      @media (max-width: 520px) {
+        .wrap {
+          padding: 3.75rem 1rem 5rem;
+        }
+        ul.place-list a {
+          padding: 0.85rem 0.9rem;
+        }
+        .actions {
+          gap: 0.6rem;
+        }
+        .btn {
+          padding: 0.7rem 0.9rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap" id="app"></div>
+
+    <!-- Firebase (client)  -->
+    <script type="module">
+      // —— FIREBASE SETUP ————————————————————————————————
+      // 1) Create a Firebase project at https://console.firebase.google.com
+      // 2) Enable Firestore Database (in test mode for prototyping)
+      // 3) Paste your config below
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+      import {
+        getFirestore,
+        collection,
+        addDoc,
+        query,
+        where,
+        orderBy,
+        limit,
+        onSnapshot,
+        enableIndexedDbPersistence,
+        serverTimestamp,
+      } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+      const firebaseConfig = {
+        apiKey: "PASTE_API_KEY",
+        authDomain: "PASTE_PROJECT_ID.firebaseapp.com",
+        projectId: "PASTE_PROJECT_ID",
+        storageBucket: "PASTE_PROJECT_ID.appspot.com",
+        messagingSenderId: "PASTE_SENDER_ID",
+        appId: "PASTE_APP_ID",
+      };
+
+      const appFB = initializeApp(firebaseConfig);
+      const db = getFirestore(appFB);
+
+      // Enable offline cache / faster reads after first load
+      try {
+        await enableIndexedDbPersistence(db);
+      } catch (e) {
+        console.warn("persistence not enabled", e?.code || e);
+      }
+
+      // —— CONTENT CONFIG ————————————————————————————————
+      const LOCATIONS = [
+        {
+          slug: "welcome-center",
+          label: "welcome center",
+          lines: [
+            "you didn't know the shape your life would take here.",
+            "but you walked in anyway.",
+          ],
+        },
+        {
+          slug: "d2",
+          label: "d2",
+          lines: [
+            "so many first conversations happened here",
+            "over food you barely remember.",
+          ],
+        },
+        {
+          slug: "marketplace",
+          label: "marketplace",
+          lines: [
+            "you weren't always here to eat.",
+            "sometimes you just needed to be around people.",
+          ],
+        },
+        {
+          slug: "library",
+          label: "library",
+          lines: [
+            "you stayed here later than you meant to.",
+            "but you kept going anyway.",
+          ],
+        },
+        {
+          slug: "baraha-rooms",
+          label: "baraha rooms",
+          lines: [
+            "we cut cake here",
+            "for reasons that didn't always matter",
+            "but the moment did.",
+          ],
+        },
+        {
+          slug: "under-the-palms",
+          label: "under the palms",
+          lines: ["we said we'd stay for ten minutes.", "we stayed for hours."],
+        },
+        {
+          slug: "elevator-lobby",
+          label: "elevator lobby",
+          lines: [
+            "some of the real conversations",
+            "happened on the way somewhere else.",
+          ],
+        },
+      ];
+
+      const $ = (sel) => document.querySelector(sel);
+      const app = $("#app");
+
+      function StopGlyph() {
+        return `
+              <span class="stopmark" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M8.6 2.8h6.8l4.8 4.8v6.8l-4.8 4.8H8.6L3.8 14.4V7.6L8.6 2.8z" stroke="${getComputedStyle(
+                    document.documentElement
+                  )
+                    .getPropertyValue("--red")
+                    .trim()}" stroke-width="1.6" fill="none"/>
+                </svg>
+              </span>`;
+      }
+
+      function homeView() {
+        document.title = "a campus is made of memories, not buildings.";
+        app.innerHTML = `
+              <header>
+                <div class="title">a campus is made of memories, not buildings.</div>
+                <div class="subtitle">stop → remember → share → see the archive</div>
+              </header>
+              <ul class="place-list">
+                ${LOCATIONS.map(
+                  (loc) => `
+                  <li>
+                    <a href="#/${loc.slug}" aria-label="open ${
+                    loc.label
+                  } page">${StopGlyph()}${loc.label}</a>
+                  </li>
+                `
+                ).join("")}
+              </ul>
+              <div class="footnote">lowercase by intent • newest memories shown first • color: stop‑sign red</div>
+            `;
+      }
+
+      function locationView(slug) {
+        const loc = LOCATIONS.find((l) => l.slug === slug);
+        if (!loc) {
+          app.innerHTML = `<p>not found.</p>`;
+          return;
+        }
+        document.title = `${loc.label} — nyuad memory map`;
+
+        app.innerHTML = `
+              <nav class="breadcrumb"><a href="#/">← back</a></nav>
+              <div class="loc-title">${loc.label}</div>
+              <div class="divider" role="presentation"></div>
+              <div class="loc-lines">
+                ${loc.lines
+                  .map(
+                    (line) => `<div class="loc-line">${escapeHTML(line)}</div>`
+                  )
+                  .join("")}
+              </div>
+              <div class="divider" role="presentation"></div>
+              <div class="actions">
+                <a class="btn primary" href="#/${
+                  loc.slug
+                }/submit">share a memory</a>
+                <a class="btn" href="#/${loc.slug}/archive">view memories</a>
+              </div>
+              <div class="footnote">qr codes on physical signs should link to <em>#/${
+                loc.slug
+              }/submit</em> for direct capture.</div>
+            `;
+      }
+
+      function submitView(slug) {
+        const loc = LOCATIONS.find((l) => l.slug === slug);
+        if (!loc) {
+          app.innerHTML = `<p>not found.</p>`;
+          return;
+        }
+        document.title = `share a memory — ${loc.label}`;
+
+        app.innerHTML = `
+              <nav class="breadcrumb"><a href="#/${slug}">← ${loc.label}</a></nav>
+              <div class="loc-title">${loc.label}</div>
+              <div class="divider"></div>
+              <form id="memForm">
+                <div class="field">
+                  <label>share a memory from this place</label>
+                  <textarea id="memText" name="memory" minlength="3" maxlength="600" placeholder="write 1–6 lines."></textarea>
+                  <div class="hint">lowercase if you’d like.</div>
+                </div>
+                <div class="field">
+                  <label>initials</label>
+                  <input id="memInitials" name="initials" type="text" inputmode="latin-name" maxlength="3" placeholder="e.g., am" />
+                  <div class="hint">2–3 letters</div>
+                </div>
+                <div class="actions">
+                  <button class="btn primary" id="submitBtn" type="submit">submit</button>
+                  <a class="btn" href="#/${slug}/archive">view memories</a>
+                </div>
+                <div class="footnote" id="formNote"></div>
+              </form>
+            `;
+
+        const form = document.getElementById("memForm");
+        const note = document.getElementById("formNote");
+        form.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const memory = (
+            document.getElementById("memText").value || ""
+          ).trim();
+          const initials = (
+            document.getElementById("memInitials").value || ""
+          ).trim();
+          const btn = document.getElementById("submitBtn");
+          if (memory.length < 3) {
+            note.textContent = "please write a little more.";
+            return;
+          }
+          if (!/^([A-Za-z]{2,3})$/.test(initials)) {
+            note.textContent = "initials should be 2–3 letters.";
+            return;
+          }
+          // Optimistic: stash for immediate display in archive
+          try {
+            sessionStorage.setItem(
+              "justSubmitted",
+              JSON.stringify({
+                slug,
+                memory,
+                initials: initials.toLowerCase(),
+                t: Date.now(),
+              })
+            );
+          } catch {}
+          btn.disabled = true;
+          btn.setAttribute("aria-busy", "true");
+          try {
+            await addDoc(collection(db, "memories"), {
+              location: slug,
+              memory,
+              initials: initials.toLowerCase(),
+              created: serverTimestamp(),
+            });
+            location.hash = `#/${slug}/archive?just_submitted=1`;
+          } catch (err) {
+            console.error(err);
+            note.textContent =
+              "could not save right now. try again in a moment.";
+            btn.disabled = false;
+            btn.removeAttribute("aria-busy");
+          }
+        });
+      }
+
+      async function archiveView(slug) {
+        const loc = LOCATIONS.find((l) => l.slug === slug);
+        if (!loc) {
+          app.innerHTML = `<p>not found.</p>`;
+          return;
+        }
+        document.title = `archive — ${loc.label}`;
+
+        app.innerHTML = `
+              <nav class="breadcrumb"><a href="#/${slug}">← ${loc.label}</a></nav>
+              <div class="loc-title">${loc.label}</div>
+              <div class="divider"></div>
+              <div id="entries"></div>
+              <div class="footnote">newest at the top • initials only</div>
+            `;
+
+        const entriesEl = document.getElementById("entries");
+
+        // If we just submitted, render it immediately for perceived speed
+        let boot = "";
+        try {
+          const temp = JSON.parse(
+            sessionStorage.getItem("justSubmitted") || "null"
+          );
+          if (temp && temp.slug === slug) {
+            boot = renderEntry(temp, true) + '<div class="hint">loading…</div>';
+            // clear it so refresh doesn\'t duplicate
+            sessionStorage.removeItem("justSubmitted");
+          }
+        } catch {}
+        entriesEl.innerHTML = boot || '<div class="hint">loading…</div>';
+
+        try {
+          const qy = query(
+            collection(db, "memories"),
+            where("location", "==", slug),
+            orderBy("created", "desc"),
+            limit(100)
+          );
+          onSnapshot(
+            qy,
+            (snap) => {
+              const items = [];
+              snap.forEach((doc) => items.push(doc.data()));
+              if (items.length === 0) {
+                entriesEl.innerHTML =
+                  '<div class="hint">no memories here yet.</div>';
+              } else {
+                entriesEl.innerHTML = items
+                  .map((it) => renderEntry(it))
+                  .join("");
+              }
+            },
+            (err) => {
+              console.error(err);
+              entriesEl.innerHTML =
+                '<div class="hint">could not load right now.</div>';
+            }
+          );
+        } catch (err) {
+          console.error(err);
+          entriesEl.innerHTML =
+            '<div class="hint">could not load right now.</div>';
+        }
+      }
+
+      function renderEntry(it, flash = false) {
+        const text = escapeHTML(it.memory || "");
+        const by = escapeHTML((it.initials || "").toLowerCase());
+        return `
+              <div class="entry${flash ? " flash" : ""}">
+                <p>${text.replace(/\n/g, "<br>")}</p>
+                <div class="by">— ${by}</div>
+              </div>
+            `;
+      }
+
+      function escapeHTML(s) {
+        return (s + "").replace(
+          /[&<>\"]/g,
+          (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])
+        );
+      }
+
+      function router() {
+        const h = location.hash.replace(/^#\/?/, "");
+        if (!h) {
+          homeView();
+          return;
+        }
+        const parts = h.split("/").filter(Boolean);
+        const [slug, sub] = parts;
+        if (!slug) {
+          homeView();
+          return;
+        }
+        if (sub === "submit") {
+          submitView(slug);
+          return;
+        }
+        if (sub === "archive") {
+          archiveView(slug);
+          return;
+        }
+        locationView(slug);
+      }
+      window.addEventListener("hashchange", router);
+      router();
+
+      // —— TINY SELF-TESTS (debug console) —————————————————
+      // These validate critical behaviors without changing UI.
+      (function runTinyTests() {
+        const tests = [];
+
+        function assert(name, cond) {
+          tests.push({ name, pass: !!cond });
+        }
+        function summary() {
+          const ok = tests.filter((t) => t.pass).length;
+          const total = tests.length;
+          console.log(`memory-map tests: ${ok}/${total} passed`, tests);
+        }
+
+        // 1) newline → <br>
+        const html = (function () {
+          const dummy = { memory: "line1\nline2", initials: "am" };
+          const out = renderEntry(dummy);
+          return out.includes("line1<br>line2");
+        })();
+        assert("newline converts to <br>", html);
+
+        // 2) initials lowercased
+        const lowered = (function () {
+          const dummy = { memory: "x", initials: "NS" };
+          const out = renderEntry(dummy);
+          return out.includes("— ns");
+        })();
+        assert("initials are lowercased in render", lowered);
+
+        // 3) escapeHTML safety
+        const escaped = escapeHTML("<script>") === "&lt;script&gt;";
+        assert("escapeHTML escapes tags", escaped);
+
+        summary();
+      })();
+    </script>
+
+    <!--
+  Firestore Security Rules (start simple; tighten later):
+
+  rules_version = '2';
+  service cloud.firestore {
+    match /databases/{database}/documents {
+      match /memories/{doc} {
+        allow read: if true; // public archives
+        allow create: if request.resource.data.location in [
+          'welcome-center','d2','marketplace','library','baraha-rooms','under-the-palms','elevator-lobby']
+          && request.resource.data.initials.size() >= 2 && request.resource.data.initials.size() <= 3
+          && request.resource.data.memory.size() >= 3 && request.resource.data.memory.size() <= 600;
+        allow update, delete: if false;
+      }
+    }
+  }
+  --></body>
+</html>
