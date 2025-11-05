@@ -10,9 +10,9 @@
     <link rel="preconnect" href="https://www.googleapis.com" crossorigin />
     <style>
       :root {
-        --red: #d62828; /* stop‑sign red */
-        --ink: #222; /* subtle contrast for small UI text */
-        --paper: #ffffff; /* soft white */
+        --red: #d62828;
+        --ink: #222;
+        --paper: #ffffff;
         --maxw: 880px;
       }
       html,
@@ -219,15 +219,6 @@
           transform: translateY(0);
         }
       }
-      .entry p {
-        margin: 0.2rem 0;
-      }
-      .entry .by {
-        color: var(--ink);
-        opacity: 0.7;
-        font-size: 13px;
-        margin-top: 0.2rem;
-      }
 
       /* responsive spacing */
       @media (max-width: 520px) {
@@ -252,9 +243,6 @@
     <!-- Firebase (client)  -->
     <script type="module">
       // —— FIREBASE SETUP ————————————————————————————————
-      // 1) Create a Firebase project at https://console.firebase.google.com
-      // 2) Enable Firestore Database (in test mode for prototyping)
-      // 3) Paste your config below
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
       import {
         getFirestore,
@@ -281,12 +269,14 @@
       const appFB = initializeApp(firebaseConfig);
       const db = getFirestore(appFB);
 
-      // Enable offline cache / faster reads after first load
-      try {
-        await enableIndexedDbPersistence(db);
-      } catch (e) {
-        console.warn("persistence not enabled", e?.code || e);
-      }
+      // Enable offline cache / faster reads after first load (no top-level await)
+      (async () => {
+        try {
+          await enableIndexedDbPersistence(db);
+        } catch (e) {
+          console.warn("persistence not enabled", e?.code || e);
+        }
+      })();
 
       // —— CONTENT CONFIG ————————————————————————————————
       const LOCATIONS = [
@@ -344,44 +334,52 @@
             "happened on the way somewhere else.",
           ],
         },
+        {
+          slug: "class",
+          label: "class",
+          lines: ["you didn't walk in as the same person", "who walked out."],
+        },
       ];
 
       const $ = (sel) => document.querySelector(sel);
       const app = $("#app");
 
       function StopGlyph() {
+        let stroke = "#d62828";
+        try {
+          stroke =
+            getComputedStyle(document.documentElement)
+              .getPropertyValue("--red")
+              .trim() || stroke;
+        } catch {}
         return `
-              <span class="stopmark" aria-hidden="true">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M8.6 2.8h6.8l4.8 4.8v6.8l-4.8 4.8H8.6L3.8 14.4V7.6L8.6 2.8z" stroke="${getComputedStyle(
-                    document.documentElement
-                  )
-                    .getPropertyValue("--red")
-                    .trim()}" stroke-width="1.6" fill="none"/>
-                </svg>
-              </span>`;
+          <span class="stopmark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M8.6 2.8h6.8l4.8 4.8v6.8l-4.8 4.8H8.6L3.8 14.4V7.6L8.6 2.8z" stroke="${stroke}" stroke-width="1.6" fill="none"/>
+            </svg>
+          </span>`;
       }
 
       function homeView() {
         document.title = "a campus is made of memories, not buildings.";
         app.innerHTML = `
-              <header>
-                <div class="title">a campus is made of memories, not buildings.</div>
-                <div class="subtitle">stop → remember → share → see the archive</div>
-              </header>
-              <ul class="place-list">
-                ${LOCATIONS.map(
-                  (loc) => `
-                  <li>
-                    <a href="#/${loc.slug}" aria-label="open ${
-                    loc.label
-                  } page">${StopGlyph()}${loc.label}</a>
-                  </li>
-                `
-                ).join("")}
-              </ul>
-              <div class="footnote">lowercase by intent • newest memories shown first • color: stop‑sign red</div>
-            `;
+          <header>
+            <div class="title">a campus is made of memories, not buildings.</div>
+            <div class="subtitle">stop → remember → share → see the archive</div>
+          </header>
+          <ul class="place-list">
+            ${LOCATIONS.map(
+              (loc) => `
+              <li>
+                <a href="#/${loc.slug}" aria-label="open ${
+                loc.label
+              } page">${StopGlyph()}${loc.label}</a>
+              </li>
+            `
+            ).join("")}
+          </ul>
+          <div class="footnote">lowercase by intent • newest memories shown first • color: stop‑sign red</div>
+        `;
       }
 
       function locationView(slug) {
@@ -391,29 +389,26 @@
           return;
         }
         document.title = `${loc.label} — nyuad memory map`;
-
         app.innerHTML = `
-              <nav class="breadcrumb"><a href="#/">← back</a></nav>
-              <div class="loc-title">${loc.label}</div>
-              <div class="divider" role="presentation"></div>
-              <div class="loc-lines">
-                ${loc.lines
-                  .map(
-                    (line) => `<div class="loc-line">${escapeHTML(line)}</div>`
-                  )
-                  .join("")}
-              </div>
-              <div class="divider" role="presentation"></div>
-              <div class="actions">
-                <a class="btn primary" href="#/${
-                  loc.slug
-                }/submit">share a memory</a>
-                <a class="btn" href="#/${loc.slug}/archive">view memories</a>
-              </div>
-              <div class="footnote">qr codes on physical signs should link to <em>#/${
-                loc.slug
-              }/submit</em> for direct capture.</div>
-            `;
+          <nav class="breadcrumb"><a href="#/">← back</a></nav>
+          <div class="loc-title">${loc.label}</div>
+          <div class="divider" role="presentation"></div>
+          <div class="loc-lines">
+            ${loc.lines
+              .map((line) => `<div class="loc-line">${escapeHTML(line)}</div>`)
+              .join("")}
+          </div>
+          <div class="divider" role="presentation"></div>
+          <div class="actions">
+            <a class="btn primary" href="#/${
+              loc.slug
+            }/submit">share a memory</a>
+            <a class="btn" href="#/${loc.slug}/archive">view memories</a>
+          </div>
+          <div class="footnote">qr codes on physical signs should link to <em>#/${
+            loc.slug
+          }/submit</em> for direct capture.</div>
+        `;
       }
 
       function submitView(slug) {
@@ -423,29 +418,28 @@
           return;
         }
         document.title = `share a memory — ${loc.label}`;
-
         app.innerHTML = `
-              <nav class="breadcrumb"><a href="#/${slug}">← ${loc.label}</a></nav>
-              <div class="loc-title">${loc.label}</div>
-              <div class="divider"></div>
-              <form id="memForm">
-                <div class="field">
-                  <label>share a memory from this place</label>
-                  <textarea id="memText" name="memory" minlength="3" maxlength="600" placeholder="write 1–6 lines."></textarea>
-                  <div class="hint">lowercase if you’d like.</div>
-                </div>
-                <div class="field">
-                  <label>initials</label>
-                  <input id="memInitials" name="initials" type="text" inputmode="latin-name" maxlength="3" placeholder="e.g., am" />
-                  <div class="hint">2–3 letters</div>
-                </div>
-                <div class="actions">
-                  <button class="btn primary" id="submitBtn" type="submit">submit</button>
-                  <a class="btn" href="#/${slug}/archive">view memories</a>
-                </div>
-                <div class="footnote" id="formNote"></div>
-              </form>
-            `;
+          <nav class="breadcrumb"><a href="#/${slug}">← ${loc.label}</a></nav>
+          <div class="loc-title">${loc.label}</div>
+          <div class="divider"></div>
+          <form id="memForm">
+            <div class="field">
+              <label>share a memory from this place</label>
+              <textarea id="memText" name="memory" minlength="3" maxlength="600" placeholder="write 1–6 lines."></textarea>
+              <div class="hint">lowercase if you’d like.</div>
+            </div>
+            <div class="field">
+              <label>initials</label>
+              <input id="memInitials" name="initials" type="text" inputmode="latin-name" maxlength="3" placeholder="e.g., am" />
+              <div class="hint">2–3 letters</div>
+            </div>
+            <div class="actions">
+              <button class="btn primary" id="submitBtn" type="submit">submit</button>
+              <a class="btn" href="#/${slug}/archive">view memories</a>
+            </div>
+            <div class="footnote" id="formNote"></div>
+          </form>
+        `;
 
         const form = document.getElementById("memForm");
         const note = document.getElementById("formNote");
@@ -466,7 +460,6 @@
             note.textContent = "initials should be 2–3 letters.";
             return;
           }
-          // Optimistic: stash for immediate display in archive
           try {
             sessionStorage.setItem(
               "justSubmitted",
@@ -480,6 +473,7 @@
           } catch {}
           btn.disabled = true;
           btn.setAttribute("aria-busy", "true");
+          note.textContent = "saving…";
           try {
             await addDoc(collection(db, "memories"), {
               location: slug,
@@ -498,25 +492,22 @@
         });
       }
 
-      async function archiveView(slug) {
+      function archiveView(slug) {
         const loc = LOCATIONS.find((l) => l.slug === slug);
         if (!loc) {
           app.innerHTML = `<p>not found.</p>`;
           return;
         }
         document.title = `archive — ${loc.label}`;
-
         app.innerHTML = `
-              <nav class="breadcrumb"><a href="#/${slug}">← ${loc.label}</a></nav>
-              <div class="loc-title">${loc.label}</div>
-              <div class="divider"></div>
-              <div id="entries"></div>
-              <div class="footnote">newest at the top • initials only</div>
-            `;
+          <nav class="breadcrumb"><a href="#/${slug}">← ${loc.label}</a></nav>
+          <div class="loc-title">${loc.label}</div>
+          <div class="divider"></div>
+          <div id="entries"></div>
+          <div class="footnote">newest at the top • initials only</div>
+        `;
 
         const entriesEl = document.getElementById("entries");
-
-        // If we just submitted, render it immediately for perceived speed
         let boot = "";
         try {
           const temp = JSON.parse(
@@ -524,7 +515,6 @@
           );
           if (temp && temp.slug === slug) {
             boot = renderEntry(temp, true) + '<div class="hint">loading…</div>';
-            // clear it so refresh doesn\'t duplicate
             sessionStorage.removeItem("justSubmitted");
           }
         } catch {}
@@ -565,14 +555,14 @@
       }
 
       function renderEntry(it, flash = false) {
-        const text = escapeHTML(it.memory || "");
-        const by = escapeHTML((it.initials || "").toLowerCase());
+        const text = escapeHTML((it.memory || "") + "");
+        const by = escapeHTML(((it.initials || "") + "").toLowerCase());
         return `
-              <div class="entry${flash ? " flash" : ""}">
-                <p>${text.replace(/\n/g, "<br>")}</p>
-                <div class="by">— ${by}</div>
-              </div>
-            `;
+          <div class="entry${flash ? " flash" : ""}">
+            <p>${text.replace(/\n/g, "<br>")}</p>
+            <div class="by">— ${by}</div>
+          </div>
+        `;
       }
 
       function escapeHTML(s) {
@@ -608,10 +598,8 @@
       router();
 
       // —— TINY SELF-TESTS (debug console) —————————————————
-      // These validate critical behaviors without changing UI.
       (function runTinyTests() {
         const tests = [];
-
         function assert(name, cond) {
           tests.push({ name, pass: !!cond });
         }
@@ -620,46 +608,40 @@
           const total = tests.length;
           console.log(`memory-map tests: ${ok}/${total} passed`, tests);
         }
-
-        // 1) newline → <br>
-        const html = (function () {
+        const html = (() => {
           const dummy = { memory: "line1\nline2", initials: "am" };
           const out = renderEntry(dummy);
           return out.includes("line1<br>line2");
         })();
         assert("newline converts to <br>", html);
-
-        // 2) initials lowercased
-        const lowered = (function () {
+        const lowered = (() => {
           const dummy = { memory: "x", initials: "NS" };
           const out = renderEntry(dummy);
           return out.includes("— ns");
         })();
         assert("initials are lowercased in render", lowered);
-
-        // 3) escapeHTML safety
         const escaped = escapeHTML("<script>") === "&lt;script&gt;";
         assert("escapeHTML escapes tags", escaped);
-
         summary();
       })();
     </script>
 
     <!--
-  Firestore Security Rules (start simple; tighten later):
+    Firestore Security Rules (start simple; tighten later):
 
-  rules_version = '2';
-  service cloud.firestore {
-    match /databases/{database}/documents {
-      match /memories/{doc} {
-        allow read: if true; // public archives
-        allow create: if request.resource.data.location in [
-          'welcome-center','d2','marketplace','library','baraha-rooms','under-the-palms','elevator-lobby']
-          && request.resource.data.initials.size() >= 2 && request.resource.data.initials.size() <= 3
-          && request.resource.data.memory.size() >= 3 && request.resource.data.memory.size() <= 600;
-        allow update, delete: if false;
+    rules_version = '2';
+    service cloud.firestore {
+      match /databases/{database}/documents {
+        match /memories/{doc} {
+          allow read: if true; // public archives
+          allow create: if request.resource.data.location in [
+            'welcome-center','d2','marketplace','library','baraha-rooms','under-the-palms','elevator-lobby','class']
+            && request.resource.data.initials.size() >= 2 && request.resource.data.initials.size() <= 3
+            && request.resource.data.memory.size() >= 3 && request.resource.data.memory.size() <= 600;
+          allow update, delete: if false;
+        }
       }
     }
-  }
-  --></body>
+    -->
+  </body>
 </html>
