@@ -5,9 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>a campus is made of memories, not buildings.</title>
     <meta name="description" content="site-specific memory archive — nyuad" />
-    <!-- perf: help the browser set up TLS/HTTP2 early for firebase modules -->
-    <link rel="preconnect" href="https://www.gstatic.com" crossorigin />
-    <link rel="preconnect" href="https://www.googleapis.com" crossorigin />
+    <link
+      rel="preconnect"
+      href="https://raw.githubusercontent.com"
+      crossorigin
+    />
     <style>
       :root {
         --red: #d62828;
@@ -58,8 +60,6 @@
         text-transform: lowercase;
         margin-top: 0.35rem;
       }
-
-      /* home list */
       ul.place-list {
         list-style: none;
         padding: 0;
@@ -79,8 +79,6 @@
       ul.place-list a:hover {
         background: #fff5f5;
       }
-
-      /* location page */
       .loc-title {
         font-size: clamp(22px, 2.6vw, 30px);
         font-weight: 600;
@@ -102,7 +100,6 @@
         opacity: 0.22;
         margin: 1.2rem 0 1.6rem;
       }
-
       .actions {
         display: flex;
         flex-wrap: wrap;
@@ -128,7 +125,6 @@
       .btn:hover {
         filter: saturate(110%);
       }
-
       .footnote {
         color: var(--ink);
         opacity: 0.6;
@@ -146,8 +142,6 @@
       nav.breadcrumb a:hover {
         text-decoration: underline;
       }
-
-      /* small stop icon for visual language */
       .stopmark {
         width: 20px;
         height: 20px;
@@ -158,8 +152,6 @@
       .stopmark svg {
         display: block;
       }
-
-      /* form styles */
       form .field {
         margin: 0.85rem 0;
       }
@@ -192,7 +184,6 @@
         margin-top: 0.25rem;
         text-transform: lowercase;
       }
-
       .entry {
         padding: 1rem 0;
         border-bottom: 1px solid rgba(214, 40, 40, 0.2);
@@ -219,8 +210,6 @@
           transform: translateY(0);
         }
       }
-
-      /* responsive spacing */
       @media (max-width: 520px) {
         .wrap {
           padding: 3.75rem 1rem 5rem;
@@ -240,45 +229,14 @@
   <body>
     <div class="wrap" id="app"></div>
 
-    <!-- Firebase (client)  -->
     <script type="module">
-      // —— FIREBASE SETUP ————————————————————————————————
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-      import {
-        getFirestore,
-        collection,
-        addDoc,
-        query,
-        where,
-        orderBy,
-        limit,
-        onSnapshot,
-        enableIndexedDbPersistence,
-        serverTimestamp,
-      } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+      // ——— CONFIG (GitHub raw path for reads) ———
+      const GITHUB_OWNER = "PASTE_OWNER";
+      const GITHUB_REPO = "PASTE_REPO";
+      const GITHUB_BRANCH = "main"; // or "gh-pages" etc.
+      const RAW_MEM_URL = `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/${GITHUB_BRANCH}/memories.json`;
 
-      const firebaseConfig = {
-        apiKey: "PASTE_API_KEY",
-        authDomain: "PASTE_PROJECT_ID.firebaseapp.com",
-        projectId: "PASTE_PROJECT_ID",
-        storageBucket: "PASTE_PROJECT_ID.appspot.com",
-        messagingSenderId: "PASTE_SENDER_ID",
-        appId: "PASTE_APP_ID",
-      };
-
-      const appFB = initializeApp(firebaseConfig);
-      const db = getFirestore(appFB);
-
-      // Enable offline cache / faster reads after first load (no top-level await)
-      (async () => {
-        try {
-          await enableIndexedDbPersistence(db);
-        } catch (e) {
-          console.warn("persistence not enabled", e?.code || e);
-        }
-      })();
-
-      // —— CONTENT CONFIG ————————————————————————————————
+      // ——— CONTENT CONFIG ———
       const LOCATIONS = [
         {
           slug: "welcome-center",
@@ -378,7 +336,7 @@
             `
             ).join("")}
           </ul>
-          <div class="footnote">lowercase by intent • newest memories shown first • color: stop‑sign red</div>
+          <div class="footnote">lowercase by intent • newest memories shown first • color: stop-sign red</div>
         `;
       }
 
@@ -475,12 +433,14 @@
           btn.setAttribute("aria-busy", "true");
           note.textContent = "saving…";
           try {
-            await addDoc(collection(db, "memories"), {
-              location: slug,
-              memory,
-              initials: initials.toLowerCase(),
-              created: serverTimestamp(),
+            const res = await fetch("/api/submit", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ location: slug, memory, initials }),
             });
+            if (!res.ok) {
+              throw new Error(await res.text());
+            }
             location.hash = `#/${slug}/archive?just_submitted=1`;
           } catch (err) {
             console.error(err);
@@ -490,6 +450,12 @@
             btn.removeAttribute("aria-busy");
           }
         });
+      }
+
+      async function fetchMemories() {
+        const res = await fetch(RAW_MEM_URL, { cache: "no-store" });
+        if (!res.ok) throw new Error("failed to load memories");
+        return res.json();
       }
 
       function archiveView(slug) {
@@ -503,7 +469,7 @@
           <nav class="breadcrumb"><a href="#/${slug}">← ${loc.label}</a></nav>
           <div class="loc-title">${loc.label}</div>
           <div class="divider"></div>
-          <div id="entries"></div>
+          <div id="entries"><div class="hint">loading…</div></div>
           <div class="footnote">newest at the top • initials only</div>
         `;
 
@@ -520,38 +486,21 @@
         } catch {}
         entriesEl.innerHTML = boot || '<div class="hint">loading…</div>';
 
-        try {
-          const qy = query(
-            collection(db, "memories"),
-            where("location", "==", slug),
-            orderBy("created", "desc"),
-            limit(100)
-          );
-          onSnapshot(
-            qy,
-            (snap) => {
-              const items = [];
-              snap.forEach((doc) => items.push(doc.data()));
-              if (items.length === 0) {
-                entriesEl.innerHTML =
-                  '<div class="hint">no memories here yet.</div>';
-              } else {
-                entriesEl.innerHTML = items
-                  .map((it) => renderEntry(it))
-                  .join("");
-              }
-            },
-            (err) => {
-              console.error(err);
-              entriesEl.innerHTML =
-                '<div class="hint">could not load right now.</div>';
-            }
-          );
-        } catch (err) {
-          console.error(err);
-          entriesEl.innerHTML =
-            '<div class="hint">could not load right now.</div>';
-        }
+        (async () => {
+          try {
+            const data = await fetchMemories();
+            const items = (data[slug] || [])
+              .slice()
+              .sort((a, b) => (b.created || 0) - (a.created || 0));
+            entriesEl.innerHTML = items.length
+              ? items.map((it) => renderEntry(it)).join("")
+              : '<div class="hint">no memories here yet.</div>';
+          } catch (err) {
+            console.error(err);
+            entriesEl.innerHTML =
+              '<div class="hint">could not load right now.</div>';
+          }
+        })();
       }
 
       function renderEntry(it, flash = false) {
@@ -567,7 +516,7 @@
 
       function escapeHTML(s) {
         return (s + "").replace(
-          /[&<>\"]/g,
+          /[&<>"]/g,
           (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])
         );
       }
@@ -597,17 +546,10 @@
       window.addEventListener("hashchange", router);
       router();
 
-      // —— TINY SELF-TESTS (debug console) —————————————————
+      // tiny tests
       (function runTinyTests() {
         const tests = [];
-        function assert(name, cond) {
-          tests.push({ name, pass: !!cond });
-        }
-        function summary() {
-          const ok = tests.filter((t) => t.pass).length;
-          const total = tests.length;
-          console.log(`memory-map tests: ${ok}/${total} passed`, tests);
-        }
+        const assert = (name, cond) => tests.push({ name, pass: !!cond });
         const html = (() => {
           const dummy = { memory: "line1\nline2", initials: "am" };
           const out = renderEntry(dummy);
@@ -622,26 +564,14 @@
         assert("initials are lowercased in render", lowered);
         const escaped = escapeHTML("<script>") === "&lt;script&gt;";
         assert("escapeHTML escapes tags", escaped);
-        summary();
+        console.log(
+          `memory-map tests: ${tests.filter((t) => t.pass).length}/${
+            tests.length
+          } passed`,
+          tests
+        );
       })();
     </script>
-
-    <!--
-    Firestore Security Rules (start simple; tighten later):
-
-    rules_version = '2';
-    service cloud.firestore {
-      match /databases/{database}/documents {
-        match /memories/{doc} {
-          allow read: if true; // public archives
-          allow create: if request.resource.data.location in [
-            'welcome-center','d2','marketplace','library','baraha-rooms','under-the-palms','elevator-lobby','class']
-            && request.resource.data.initials.size() >= 2 && request.resource.data.initials.size() <= 3
-            && request.resource.data.memory.size() >= 3 && request.resource.data.memory.size() <= 600;
-          allow update, delete: if false;
-        }
-      }
-    }
-    -->
   </body>
 </html>
+S
